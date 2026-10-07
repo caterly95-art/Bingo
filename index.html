@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0b1020">
+  <title>Online Bingo — 2 Player</title>
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{
+      min-height:100vh;padding:18px;
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:#fff;
+      background:radial-gradient(circle at top,#1b2850 0,#0b1020 45%,#050810 100%);
+    }
+    button,input{font:inherit}
+    button{border:0;cursor:pointer}
+    .app{width:min(1000px,100%);margin:auto}
+    header{text-align:center;margin:10px 0 22px}
+    .logo{
+      font-size:clamp(38px,9vw,64px);font-weight:1000;letter-spacing:6px;
+      background:linear-gradient(90deg,#60a5fa,#a78bfa,#f472b6);
+      -webkit-background-clip:text;background-clip:text;color:transparent
+    }
+    .subtitle{color:#94a3b8;margin-top:4px}
+    .panel{
+      background:rgba(15,23,42,.82);border:1px solid rgba(148,163,184,.16);
+      border-radius:24px;padding:22px;box-shadow:0 25px 70px #0005;
+      backdrop-filter:blur(18px);margin-bottom:18px
+    }
+    .hidden{display:none!important}
+    h2{margin-bottom:16px}
+    .form{display:grid;gap:12px}
+    input{
+      width:100%;padding:14px 16px;border-radius:13px;
+      border:1px solid #334155;background:#091122;color:#fff;outline:none
+    }
+    input:focus{border-color:#60a5fa}
+    .buttons{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .btn{
+      padding:14px 18px;border-radius:13px;color:#fff;background:#2563eb;
+      font-weight:850;transition:.15s
+    }
+    .btn:hover{filter:brightness(1.1);transform:translateY(-1px)}
+    .btn.secondary{background:#334155}
+    .btn.success{background:#16a34a}
+    .message{min-height:22px;margin-top:12px;color:#fbbf24;font-size:14px}
+    .room-code{
+      text-align:center;font-size:clamp(30px,9vw,50px);font-weight:950;
+      letter-spacing:8px;color:#93c5fd;margin:12px 0
+    }
+    .players{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+    .player{
+      padding:16px;border-radius:15px;background:#0a1224;border:1px solid #263653
+    }
+    .player strong{display:block;margin-bottom:5px}
+    .status{font-size:13px;color:#94a3b8}
+    .game-top{
+      display:flex;justify-content:space-between;align-items:center;gap:12px;
+      flex-wrap:wrap;margin-bottom:18px
+    }
+    .badge{
+      background:#172554;color:#bfdbfe;padding:9px 13px;
+      border-radius:999px;font-size:13px;font-weight:850
+    }
+    .turn{
+      padding:14px;border-radius:14px;background:#111c35;
+      text-align:center;font-weight:850;margin-bottom:18px
+    }
+    .board-wrap{display:flex;justify-content:center;overflow-x:auto}
+    .board{
+      width:min(560px,100%);display:grid;grid-template-columns:repeat(5,1fr);gap:8px
+    }
+    .cell{
+      aspect-ratio:1;min-width:48px;border-radius:13px;background:#172033;
+      border:1px solid #334155;color:#fff;font-size:clamp(15px,4vw,23px);
+      font-weight:900;transition:.15s
+    }
+    .cell:hover:not(:disabled){transform:scale(1.03);border-color:#60a5fa}
+    .cell.called{background:#1d4ed8;border-color:#60a5fa}
+    .cell.marked{background:#16a34a;border-color:#86efac}
+    .cell.free{background:#7c3aed;border-color:#c4b5fd}
+    .cell:disabled{opacity:.9;cursor:default}
+    .called-number{text-align:center;color:#cbd5e1;margin-top:18px}
+    .called-number span{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:58px;height:58px;margin-left:8px;border-radius:50%;
+      background:#dc2626;font-size:22px;font-weight:900
+    }
+    .rules{margin-top:20px;color:#94a3b8;line-height:1.7;font-size:14px}
+    .result{text-align:center}
+    .emoji{font-size:70px;margin-bottom:8px}
+    .result h2{font-size:32px}
+    .small{font-size:12px;color:#64748b;margin-top:12px;text-align:center}
+    @media(max-width:600px){
+      body{padding:12px}.panel{padding:16px;border-radius:19px}
+      .buttons,.players{grid-template-columns:1fr}
+      .board{gap:5px}.cell{min-width:43px;border-radius:9px}
+    }
+  </style>
+</head>
+
+<body>
+<main class="app">
+  <header>
+    <div class="logo">BINGO</div>
+    <div class="subtitle">2 Player • Online • Firebase</div>
+  </header>
+
+  <section id="homeScreen" class="panel">
+    <h2>Play Online</h2>
+
+    <div class="form">
+      <input id="nameInput" maxlength="20" placeholder="Your name" autocomplete="off">
+
+      <div class="buttons">
+        <button class="btn" id="createBtn">Create Room</button>
+        <button class="btn secondary" id="showJoinBtn">Join Room</button>
+      </div>
+    </div>
+
+    <div id="joinBox" class="hidden" style="margin-top:14px">
+      <input id="roomInput" maxlength="6" placeholder="Enter 6-character room code" autocomplete="off">
+      <button class="btn success" id="joinBtn" style="width:100%;margin-top:10px">
+        Join Room
+      </button>
+    </div>
+
+    <div id="homeMessage" class="message"></div>
+
+    <div class="rules">
+      <b>How to play</b><br>
+      1. Player 1 creates a room.<br>
+      2. Share the room code with Player 2.<br>
+      3. Player 2 joins using the code.<br>
+      4. Players take turns calling numbers and marking their own cards.<br>
+      5. Complete a row, column or diagonal to win.
+    </div>
+  </section>
+
+  <section id="lobbyScreen" class="panel hidden">
+    <h2>Waiting for Player 2</h2>
+
+    <div class="room-code" id="roomCodeLabel">------</div>
+    <p style="text-align:center;color:#94a3b8">
+      Share this code with your friend.
+    </p>
+
+    <div class="players">
+      <div class="player">
+        <strong id="hostName">Player 1</strong>
+        <span class="status">Player 1 • Ready</span>
+      </div>
+
+      <div class="player">
+        <strong id="guestName">Waiting...</strong>
+        <span class="status" id="guestStatus">Player 2 • Waiting</span>
+      </div>
+    </div>
+
+    <button class="btn secondary" id="leaveLobbyBtn" style="width:100%">
+      Leave Room
+    </button>
+
+    <div class="small">The game starts automatically when Player 2 joins.</div>
+  </section>
+
+  <section id="gameScreen" class="panel hidden">
+    <div class="game-top">
+      <div>
+        <b id="gameRoomLabel">Room ------</b>
+        <div class="small" style="text-align:left">
+          You: <span id="myNameLabel"></span>
+        </div>
+      </div>
+      <div class="badge" id="roleBadge">PLAYER</div>
+    </div>
+
+    <div class="turn" id="turnLabel">Waiting...</div>
+
+    <div class="board-wrap">
+      <div class="board" id="board"></div>
+    </div>
+
+    <div class="called-number">
+      Last called:
+      <span id="lastCalled">—</span>
+    </div>
+
+    <div class="buttons" style="margin-top:18px">
+      <button class="btn" id="callBtn">Call Number</button>
+      <button class="btn secondary" id="leaveGameBtn">Leave Game</button>
+    </div>
+
+    <div class="rules">
+      Click a called number on your card to mark it. The center square is FREE.
+    </div>
+  </section>
+
+  <section id="resultScreen" class="panel hidden result">
+    <div class="emoji">🏆</div>
+    <h2 id="winnerTitle">Winner!</h2>
+    <p id="winnerText" style="color:#94a3b8;margin:10px 0 20px"></p>
+    <button class="btn" id="newGameBtn" style="width:100%">Back to Home</button>
+  </section>
+</main>
+
+<script type="module">
+  import { initializeApp } from
+    "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+
+  import {
+    getDatabase,
+    ref,
+    get,
+    set,
+    update,
+    onValue,
+    remove
+  } from
+    "https://www.gstatic.com/firebasejs/12.19.0/firebase-database.js";
+
+  // ============================================================
+  // FIREBASE CONFIG
+  // ============================================================
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyD-qG7w_tEdwq_QCe0_6oZjMcC-KmS77P8",
+    authDomain: "bingo-a206a.firebaseapp.com",
+    databaseURL: "https://bingo-a206a-default-rtdb.firebaseio.com/",
+    projectId: "bingo-a206a",
+    storageBucket: "bingo-a206a.firebasestorage.app",
+    messagingSenderId: "871533018996",
+    appId: "1:871533018996:web:7412d3990cd3446eb37621",
+    measurementId: "G-HVPWP33KPF"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db = getDatabase(app);
+
+  // ============================================================
+  // STATE
+  // ============================================================
+
+  const $ = id => document.getElementById(id);
+
+  let playerId = localStorage.getItem("bingoPlayerId");
+
+  if (!playerId) {
+    playerId = crypto.randomUUID();
+    localStorage.setItem("bingoPlayerId", playerId);
+  }
+
+  let playerName = "";
+  let roomId = "";
+  let role = "";
+  let myCard = [];
+  let marked = new Set(["12"]);
+  let roomData = null;
+  let unsubscribeRoom = null;
+
+  // ============================================================
+  // SCREEN
+  // ============================================================
+
+  function showScreen(name) {
+    ["home", "lobby", "game", "result"].forEach(screen => {
+      $(screen + "Screen").classList.add("hidden");
+    });
+
+    $(name + "Screen").classList.remove("hidden");
+  }
+
+  function showMessage(text, error = false) {
+    $("homeMessage").textContent = text;
+    $("homeMessage").style.color = error ? "#f87171" : "#fbbf24";
+  }
+
+  function roomRef() {
+    return ref(db, "rooms/" + roomId);
+  }
+
+  // ============================================================
+  // ROOM / CARD HELPERS
+  // ============================================================
+
+  function cleanRoomCode(value) {
+    return value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 6);
+  }
+
+  function randomRoomCode() {
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    return code;
+  }
+
+  function generateCard() {
+    const numbers = [];
+
+    while (numbers.length < 24) {
+      const number = Math.floor(Math.random() * 75) + 1;
+
+      if (!numbers.includes(number)) {
+        numbers.push(number);
+      }
+    }
+
+    numbers.splice(12, 0, 0);
+    return numbers;
+  }
+
+  function playerData(name, card) {
+    return {
+      id: playerId,
+      name: name,
+      card: card
+    };
+  }
+
+  function handleFirebaseError(error) {
+    console.error(error);
+
+    if (error?.code === "PERMISSION_DENIED") {
+      showMessage(
+        "Firebase permission denied. Check your Realtime Database rules.",
+        true
+      );
+    } else {
+      showMessage(error?.message || "Something went wrong.", true);
+    }
+  }
+
+  // ============================================================
+  // CREATE ROOM
+  // ============================================================
+
+  async function createRoom() {
+    playerName = $("nameInput").value.trim() || "Player 1";
+    role = "host";
+    myCard = generateCard();
+    marked = new Set(["12"]);
+
+    let code;
+    let exists = true;
+
+    try {
+      while (exists) {
+        code = randomRoomCode();
+        const snapshot = await get(ref(db, "rooms/" + code));
+        exists = snapshot.exists();
+      }
+
+      roomId = code;
+
+      await set(roomRef(), {
+        status: "waiting",
+        host: playerData(playerName, myCard),
+        guest: null,
+        called: [],
+        turn: "host",
+        winner: null,
+        winnerName: null,
+        createdAt: Date.now()
+      });
+
+      listenToRoom();
+      showScreen("lobby");
+    } catch (error) {
+      handleFirebaseError(error);
+    }
+  }
+
+  // ============================================================
+  // JOIN ROOM
+  // ============================================================
+
+  async function joinRoom() {
+    playerName = $("nameInput").value.trim() || "Player 2";
+
+    const code = cleanRoomCode($("roomInput").value);
+
+    if (code.length !== 6) {
+      showMessage("Enter a valid 6-character room code.", true);
+      return;
+    }
+
+    roomId = code;
+
+    try {
+      const snapshot = await get(roomRef());
+
+      if (!snapshot.exists()) {
+        showMessage("Room not found.", true);
+        return;
+      }
+
+      const data = snapshot.val();
+
+      if (data.guest) {
+        showMessage("This room already has two players.", true);
+        return;
+      }
+
+      if (data.status === "finished") {
+        showMessage("This game has already finished.", true);
+        return;
+      }
+
+      role = "guest";
+      myCard = generateCard();
+      marked = new Set(["12"]);
+
+      await update(roomRef(), {
+        guest: playerData(playerName, myCard),
+        status: "playing",
+        turn: "host"
+      });
+
+      listenToRoom();
+      showScreen("game");
+
+    } catch (error) {
+      handleFirebaseError(error);
+    }
+  }
+
+  // ============================================================
+  // REALTIME ROOM LISTENER
+  // ============================================================
+
+  function listenToRoom() {
+    if (unsubscribeRoom) {
+      unsubscribeRoom();
+    }
+
+    unsubscribeRoom = onValue(
+      roomRef(),
+      snapshot => {
+        if (!snapshot.exists()) {
+          cleanupLocal();
+          showScreen("home");
+          showMessage("Room no longer exists.", true);
+          return;
+        }
+
+        roomData = snapshot.val();
+
+        if (role === "host" && roomData.host?.card) {
+          myCard = roomData.host.card;
+        }
+
+        if (role === "guest" && roomData.guest?.card) {
+          myCard = roomData.guest.card;
+        }
+
+        if (roomData.status === "waiting") {
+          updateLobby();
+          showScreen("lobby");
+        }
+
+        if (roomData.status === "playing") {
+          renderGame();
+          showScreen("game");
+        }
+
+        if (roomData.status === "finished") {
+          renderGame();
+          showResult();
+        }
+      },
+      error => handleFirebaseError(error)
+    );
+  }
+
+  // ============================================================
+  // LOBBY
+  // ============================================================
+
+  function updateLobby() {
+    $("roomCodeLabel").textContent = roomId;
+
+    $("hostName").textContent =
+      roomData?.host?.name || "Player 1";
+
+    if (roomData?.guest) {
+      $("guestName").textContent =
+        roomData.guest.name || "Player 2";
+
+      $("guestStatus").textContent =
+        "Player 2 • Ready";
+    } else {
+      $("guestName").textContent = "Waiting...";
+
+      $("guestStatus").textContent =
+        "Player 2 • Waiting";
+    }
+  }
+
+  // ============================================================
+  // GAME UI
+  // ============================================================
+
+  function renderGame() {
+    $("gameRoomLabel").textContent = "Room " + roomId;
+    $("myNameLabel").textContent = playerName;
+
+    $("roleBadge").textContent =
+      role === "host" ? "PLAYER 1" : "PLAYER 2";
+
+    const turnName =
+      roomData.turn === "host"
+        ? roomData.host?.name
+        : roomData.guest?.name;
+
+    if (roomData.winner) {
+      $("turnLabel").textContent = "Game finished";
+    } else if (roomData.turn === role) {
+      $("turnLabel").textContent =
+        "🎯 Your turn — call a number";
+    } else {
+      $("turnLabel").textContent =
+        "⏳ " + (turnName || "Opponent") + "'s turn";
+    }
+
+    const called = Array.isArray(roomData.called)
+      ? roomData.called
+      : [];
+
+    $("lastCalled").textContent =
+      called.length ? called[called.length - 1] : "—";
+
+    $("callBtn").disabled =
+      roomData.turn !== role || !!roomData.winner;
+
+    $("callBtn").textContent =
+      roomData.turn === role
+        ? "Call Number"
+        : "Waiting...";
+
+    renderBoard(called);
+  }
+
+  function renderBoard(called) {
+    const board = $("board");
+    board.innerHTML = "";
+
+    myCard.forEach((number, index) => {
+      const button = document.createElement("button");
+
+      button.className = "cell";
+
+      if (index === 12) {
+        button.textContent = "FREE";
+        button.classList.add("free", "marked");
+        button.disabled = true;
+      } else {
+        button.textContent = number;
+
+        if (called.includes(number)) {
+          button.classList.add("called");
+        }
+
+        if (marked.has(String(index))) {
+          button.classList.add("marked");
+        }
+
+        button.disabled =
+          !called.includes(number) ||
+          roomData.turn !== role ||
+          !!roomData.winner;
+
+        button.addEventListener("click", () => {
+          markNumber(index);
+        });
+      }
+
+      board.appendChild(button);
+    });
+  }
+
+  // ============================================================
+  // CALL NUMBER
+  // ============================================================
+
+  async function callNumber() {
+    if (!roomData) return;
+    if (roomData.winner) return;
+    if (roomData.turn !== role) return;
+
+    const called = Array.isArray(roomData.called)
+      ? [...roomData.called]
+      : [];
+
+    if (called.length >= 75) return;
+
+    const remaining = [];
+
+    for (let number = 1; number <= 75; number++) {
+      if (!called.includes(number)) {
+        remaining.push(number);
+      }
+    }
+
+    const number =
+      remaining[Math.floor(Math.random() * remaining.length)];
+
+    called.push(number);
+
+    const nextTurn =
+      role === "host" ? "guest" : "host";
+
+    try {
+      await update(roomRef(), {
+        called: called,
+        turn: nextTurn
+      });
+    } catch (error) {
+      handleFirebaseError(error);
+    }
+  }
+
+  // ============================================================
+  // MARK NUMBER
+  // ============================================================
+
+  async function markNumber(index) {
+    if (!roomData) return;
+    if (roomData.winner) return;
+    if (roomData.turn !== role) return;
+
+    const called = Array.isArray(roomData.called)
+      ? roomData.called
+      : [];
+
+    const number = myCard[index];
+
+    if (!called.includes(number)) return;
+
+    marked.add(String(index));
+
+    if (checkWin()) {
+      try {
+        await update(roomRef(), {
+          winner: role,
+          winnerName: playerName,
+          status: "finished"
+        });
+      } catch (error) {
+        handleFirebaseError(error);
+      }
+
+      return;
+    }
+
+    const nextTurn =
+      role === "host" ? "guest" : "host";
+
+    try {
+      await update(roomRef(), {
+        turn: nextTurn
+      });
+    } catch (error) {
+      handleFirebaseError(error);
+    }
+  }
+
+  // ============================================================
+  // WIN CHECK
+  // ============================================================
+
+  function checkWin() {
+    const isMarked = index =>
+      marked.has(String(index)) || index === 12;
+
+    // Rows
+    for (let row = 0; row < 5; row++) {
+      let complete = true;
+
+      for (let col = 0; col < 5; col++) {
+        if (!isMarked(row * 5 + col)) {
+          complete = false;
+          break;
+        }
+      }
+
+      if (complete) return true;
+    }
+
+    // Columns
+    for (let col = 0; col < 5; col++) {
+      let complete = true;
+
+      for (let row = 0; row < 5; row++) {
+        if (!isMarked(row * 5 + col)) {
+          complete = false;
+          break;
+        }
+      }
+
+      if (complete) return true;
+    }
+
+    // Diagonal 1
+    let diagonal1 = true;
+
+    for (let i = 0; i < 5; i++) {
+      if (!isMarked(i * 5 + i)) {
+        diagonal1 = false;
+        break;
+      }
+    }
+
+    // Diagonal 2
+    let diagonal2 = true;
+
+    for (let i = 0; i < 5; i++) {
+      if (!isMarked(i * 5 + (4 - i))) {
+        diagonal2 = false;
+        break;
+      }
+    }
+
+    return diagonal1 || diagonal2;
+  }
+
+  // ============================================================
+  // RESULT
+  // ============================================================
+
+  function showResult() {
+    const winnerName =
+      roomData.winnerName || "Someone";
+
+    const wonByMe =
+      roomData.winner === role;
+
+    $("winnerTitle").textContent =
+      wonByMe
+        ? "🎉 You Won!"
+        : "🏆 " + winnerName + " Won!";
+
+    $("winnerText").textContent =
+      wonByMe
+        ? "Congratulations! You completed Bingo first."
+        : winnerName + " completed Bingo first.";
+
+    showScreen("result");
+  }
+
+  // ============================================================
+  // LEAVE / CLEANUP
+  // ============================================================
+
+  async function leaveRoom() {
+    try {
+      if (roomId && role === "host") {
+        await remove(roomRef());
+      } else if (
+        roomId &&
+        role === "guest" &&
+        roomData?.guest?.id === playerId
+      ) {
+        await update(roomRef(), {
+          guest: null,
+          status: "waiting",
+          turn: "host"
+        });
+      }
+    } catch (error) {
+      console.error(error);
+    }
+
+    cleanupLocal();
+    showScreen("home");
+  }
+
+  function cleanupLocal() {
+    if (unsubscribeRoom) {
+      unsubscribeRoom();
+      unsubscribeRoom = null;
+    }
+
+    roomId = "";
+    role = "";
+    roomData = null;
+    myCard = [];
+    marked = new Set(["12"]);
+  }
+
+  // ============================================================
+  // EVENTS
+  // ============================================================
+
+  $("createBtn").addEventListener("click", createRoom);
+
+  $("showJoinBtn").addEventListener("click", () => {
+    $("joinBox").classList.toggle("hidden");
+    $("roomInput").focus();
+  });
+
+  $("joinBtn").addEventListener("click", joinRoom);
+
+  $("roomInput").addEventListener("input", event => {
+    event.target.value =
+      cleanRoomCode(event.target.value);
+  });
+
+  $("callBtn").addEventListener("click", callNumber);
+
+  $("leaveLobbyBtn").addEventListener("click", leaveRoom);
+
+  $("leaveGameBtn").addEventListener("click", leaveRoom);
+
+  $("newGameBtn").addEventListener("click", () => {
+    cleanupLocal();
+    $("homeMessage").textContent = "";
+    $("roomInput").value = "";
+    showScreen("home");
+  });
+
+  $("nameInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") createRoom();
+  });
+
+  $("roomInput").addEventListener("keydown", event => {
+    if (event.key === "Enter") joinRoom();
+  });
+</script>
+</body>
+</html>
